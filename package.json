@@ -1,6 +1,6 @@
 {
   "name": "@wouterlms/forms",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "scripts": {
     "dev": "vite",
     "build": "vite build && vue-tsc --emitDeclarationOnly && mv dist/src dist/types",
@@ -12,10 +12,10 @@
   "exports": {
     ".": {
       "import": "./index.js",
-      "types": "./types/composables/index.d.ts"
+      "types": "./types/index.d.ts"
     }
   },
-  "types": "./types/composables/index.d.ts",
+  "types": "./types/index.d.ts",
   "publishConfig": {
     "access": "public"
   },
@@ -23,7 +23,7 @@
     "vue": "^3.2.0"
   },
   "dependencies": {
-    "@wouterlms/composables": "^0.1.7",
+    "@wouterlms/composables": "^0.1.8",
     "vue": "^3.2.0",
     "vue-i18n": "^9.2.0-beta.30"
   },

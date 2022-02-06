@@ -19,7 +19,7 @@ export default defineConfig({
     target: 'esnext',
     minify: 'terser',
     lib: {
-      entry: resolve(__dirname, 'src/composables/index.ts'),
+      entry: resolve(__dirname, 'src/index.ts'),
       name: 'index',
       formats: [ 'es' ],
     },

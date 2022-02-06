@@ -85,7 +85,7 @@ export type FormObject<T extends FormPropertyTypes<T>> = {
 export type Form<T extends FormPropertyTypes<T>> = {
   isValid: Readonly<Ref<boolean>>
   formObject: FormObject<T>
-  validate: (input?: keyof T | undefined, setError?: boolean) => Promise<void>
+  validate: (input?: (keyof T)[], setError?: boolean) => void
   getFormValues: GetFormValues<T>
   setFormValues: SetFormValues<T>
   setFormErrors: SetFormErrors<T>
@@ -98,37 +98,59 @@ export default <T extends FormPropertyTypes<T>>(formObject: FormObject<T>): Form
     throw new Error('form object is not reactive')
   }
 
-  const validate = async (input?: keyof T, setError = true) => {
-    if (input) {
-      const { value, validate } = formObject[input]
+  // If async validation is common, might need to change this
+  // to a single Promise.all instead of using `await` in the foreach
+  const validate = async (inputs?: (keyof T)[], setError = true) => {
+    const promises: Promise<string | boolean | null>[] = []
 
-      const error = await (typeof validate === 'function'
-        ? validate(value, formObject)
-        : validate?.handler(value, formObject)
-      )
+    if (inputs?.length) {
+      inputs.forEach((input) => {
+        const { value, validate } = formObject[input]
+
+        const error = (typeof validate === 'function'
+          ? validate(value, formObject)
+          : validate?.handler(value, formObject))
+
+        promises.push(error as Promise<string | boolean | null>)
+      })
+
+      const errors = await Promise.all(promises)
 
       if (setError) {
-        formObject[input].error = error
+        errors.forEach((error, index) => {
+          const input = inputs[index]
+          formObject[input].error = error
+        })
       }
 
       return
     }
 
-    Object.values(formObject).forEach(async (value) => {
+    Object.values(formObject).forEach((value) => {
       const formProperty = value as typeof formObject[keyof T]
 
       if (formProperty.validate) {
-        const error = await (
+        const error = (
           typeof formProperty.validate === 'function'
             ? formProperty.validate(formProperty.value, formObject)
             : formProperty.validate?.handler(formProperty.value, formObject)
         )
 
-        if (setError) {
-          formProperty.error = error
-        }
+        promises.push(error as Promise<string | boolean | null>)
       }
     })
+
+    const errors = await Promise.all(promises)
+
+    if (setError) {
+      const inputs = Object.values(formObject).filter((x) => (
+        !!(x as typeof formObject[keyof T]).validate)) as (typeof formObject[keyof T])[]
+
+      errors.forEach((error, index) => {
+        const input = inputs[index]
+        input.error = error
+      })
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

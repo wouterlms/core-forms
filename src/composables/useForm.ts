@@ -1,8 +1,9 @@
 import {
   Ref,
+  computed,
   isReactive,
+  reactive,
   readonly,
-  ref,
   watch,
 } from 'vue'
 
@@ -26,6 +27,7 @@ type Validate<V, F extends Record<keyof F, FormPropertyType>> = {
 type ValidateWithOptions<V, F extends Record<keyof F, FormPropertyType>> = {
   options: {
     watch?: boolean
+    immediate?: boolean
   },
   // eslint-disable-next-line no-use-before-define
   handler: (value: V, FormObject: FormObject<F>) => MaybeAsync<string | boolean | null | undefined>
@@ -92,7 +94,8 @@ export type Form<T extends FormPropertyTypes<T>> = {
 }
 
 export default <T extends FormPropertyTypes<T>>(formObject: FormObject<T>): Form<T> => {
-  const isValid = ref(false)
+  const errorMap = reactive(new Map())
+  const isValid = computed(() => [ ...errorMap.values() ].every((error) => !error))
 
   if (!isReactive(formObject)) {
     throw new Error('form object is not reactive')
@@ -210,36 +213,37 @@ export default <T extends FormPropertyTypes<T>>(formObject: FormObject<T>): Form
     })
   }
 
-  const watchChangesToCheckIfValid = () => {
-    watch(
-      formObject, async () => {
-        isValid.value = true
+  const setInitialErrors = async () => {
+    Object.keys(formObject).forEach((k) => {
+      errorMap.set(k, false)
+    })
 
-        for (let i = 0; i < Object.keys(formObject).length; i += 1) {
-          const { value, validate } = Object.values(formObject)[i] as typeof formObject[keyof T]
+    for (let i = 0; i < Object.keys(formObject).length; i += 1) {
+      const key = Object.keys(formObject)[i]
+      const { value, validate } = Object.values(formObject)[i] as typeof formObject[keyof T]
 
-          // eslint-disable-next-line no-await-in-loop
-          const validationResponse = await (
-            typeof validate === 'function'
-              ? validate(value, formObject)
-              : validate?.handler(value, formObject)
-          )
+      if (typeof validate === 'object' && !validate.options.immediate) {
+        errorMap.set(key, true)
+      } else {
+        // eslint-disable-next-line no-await-in-loop
+        const validationResponse = await (
+          typeof validate === 'function'
+            ? validate(value, formObject)
+            : validate?.handler(value, formObject)
+        )
 
-          if (typeof validationResponse === 'string'
-            || (typeof validationResponse === 'boolean' && !validationResponse)) {
-            isValid.value = false
-            break
-          }
+        if (
+          typeof validationResponse === 'string'
+          || (typeof validationResponse === 'boolean' && !validationResponse)
+        ) {
+          errorMap.set(key, true)
         }
-      }, {
-        deep: true,
-        immediate: true,
       }
-    )
+    }
   }
 
   const watchForValidation = () => {
-    Object.values(formObject).forEach((value) => {
+    Object.entries(formObject).forEach(([ key, value ]) => {
       const formProperty = value as typeof formObject[keyof T]
 
       if (formProperty.validate) {
@@ -248,11 +252,17 @@ export default <T extends FormPropertyTypes<T>>(formObject: FormObject<T>): Form
             () => formProperty.value,
             async () => {
               if (formProperty.validate) {
-                formProperty.error = await (
+                errorMap.set(key, true)
+
+                const validationResponse = await (
                   typeof formProperty.validate === 'function'
                     ? formProperty.validate(formProperty.value, formObject)
                     : formProperty.validate?.handler(formProperty.value, formObject)
                 )
+
+                errorMap.set(key, validationResponse === false || typeof validationResponse === 'string')
+
+                formProperty.error = validationResponse
               }
             },
             { deep: true }
@@ -262,7 +272,7 @@ export default <T extends FormPropertyTypes<T>>(formObject: FormObject<T>): Form
     })
   }
 
-  watchChangesToCheckIfValid()
+  setInitialErrors()
   watchForValidation()
 
   return {

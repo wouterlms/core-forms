@@ -12,7 +12,7 @@ export default () => {
   const t = getI18nInstance()
 
   if (!t) {
-    throw new Error('Set!')
+    throw new Error('`i18n instance is not set. Make sure to call `setI18nInstance``')
   }
 
   return {

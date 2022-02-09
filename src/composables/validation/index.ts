@@ -28,8 +28,11 @@ type CustomRules<R extends {
   [K in keyof R]: ArgumentTypes<R[K]>[1] extends undefined ? boolean : ArgumentTypes<R[K]>[1]
 }
 
-type CustomMessages<R> = {
-  [K in keyof R]: string | ((value: any, options: any) => string)
+type CustomMessages<R extends {
+  [key: string]: (value: any, ruleOptions: any) => MaybeAsync<boolean>
+}> = {
+  [K in keyof R]:
+    string | ((value: ArgumentTypes<R[K]>[0], options: ArgumentTypes<R[K]>[1]) => string)
 }
 
 type CustomizeDefaultMessages ={
@@ -53,7 +56,7 @@ export default <R extends CustomRule>(options: {
   }
 
   const applyRules = async (
-    value: any, rules: Rules | Partial<CustomRules<R>>,
+    value: any, rules: Rules & Partial<CustomRules<R>>,
     customRuleMessages?: CustomMessages<R> | CustomizeDefaultMessages
   ) => {
     for (let i = 0; i < Object.keys(rules).length; i += 1) {

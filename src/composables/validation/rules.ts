@@ -1,3 +1,9 @@
+class RuleError extends Error {
+  constructor(rule: string, types: string[]) {
+    super(`${rule} validation only allows values of type ${types.map((type) => `\`${type}\``).join(', ')}`)
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const required = (value: any) => {
   if (value === null || value === undefined) {
@@ -40,6 +46,10 @@ const min = (value: number | Date, min: number | Date) => {
     return true
   }
 
+  if (!(value instanceof Date) && !(typeof value === 'number')) {
+    throw new RuleError('min', [ 'Number', 'Date' ])
+  }
+
   if (value instanceof Date) {
     return value.getTime() >= (min as Date).getTime()
   }
@@ -50,6 +60,10 @@ const min = (value: number | Date, min: number | Date) => {
 const max = (value: number | Date | null, max: number | Date) => {
   if (value === null) {
     return true
+  }
+
+  if (!(value instanceof Date) && !(typeof value === 'number')) {
+    throw new RuleError('max', [ 'Number', 'Date' ])
   }
 
   if (value instanceof Date) {
@@ -64,15 +78,17 @@ const fileSize = (file: File | null, maxFileSize: number) => {
     return true
   }
 
+  if (!(file instanceof File)) {
+    throw new RuleError('filesize', [ 'File' ])
+  }
+
   return file.size <= maxFileSize
 }
 
-// eslint-disable-next-line max-len
 const email = (
   value: string | null
 ) => !value || /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(value)
 
-// eslint-disable-next-line max-len
 const url = (
   value: string
 ) => !value || /^(http(s)?:\/\/)[\w.-]+(?:\.[\w.-]+)+[\w\-._~:/?#[\]@!$&'()*+,;=.]+$/.test(value)

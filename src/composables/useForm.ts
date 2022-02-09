@@ -34,6 +34,7 @@ type ValidateWithOptions<V, F extends Record<keyof F, FormPropertyType>> = {
 type GFVOptions<T extends FormPropertyTypes<T>> = {
   include?: (keyof T)[]
   exclude?: (keyof T)[]
+  useReturnValue?: boolean
 }
 
 type ValueType<T extends { [K in keyof T]: FormPropertyType }> = {
@@ -46,23 +47,22 @@ type ReturnType<T extends { [K in keyof T]: FormPropertyType }> = {
 
 type WithIncludeOrExclude<
   T extends FormPropertyTypes<T>,
-  K extends GFVOptions<T>, G
+  K extends GFVOptions<T>
 > =
   K extends { exclude: (infer U)[] }
     ? U extends string | number | symbol
-      ? Omit<G extends true ? ReturnType<T> : ValueType<T>, U>
+      ? Omit<K['useReturnValue'] extends true ? ReturnType<T> : ValueType<T>, U>
       : never
     : K extends { include: (infer U)[] }
     ? U extends keyof T
       // ? Does not work when U size > 1, not sure why
-      ? Pick<G extends true ? ReturnType<T> : ValueType<T>, U>
+      ? Pick<K['useReturnValue'] extends true ? ReturnType<T> : ValueType<T>, U>
       : never
-    : never
+    : K['useReturnValue'] extends true ? ReturnType<T> : ValueType<T>
 
 type GetFormValues<T extends FormPropertyTypes<T>> = <
   O extends GFVOptions<T>,
-  G extends boolean = true
->(options?: O, useGetter?: G) => WithIncludeOrExclude<T, O, G>
+>(options?: O) => WithIncludeOrExclude<T, O>
 
 type SetFormValues<T extends FormPropertyTypes<T>> = (values: {
   [K in keyof T]?: undefined extends T[K]['set'] ? T[K]['value'] : T[K]['set']
@@ -98,10 +98,8 @@ export default <T extends FormPropertyTypes<T>>(formObject: FormObject<T>): Form
     throw new Error('form object is not reactive')
   }
 
-  // If async validation is common, might need to change this
-  // to a single Promise.all instead of using `await` in the foreach
   const validate = async (inputs?: (keyof T)[], setError = true) => {
-    const promises: Promise<string | boolean | null>[] = []
+    const promises: MaybeAsync<string | boolean | null>[] = []
 
     if (inputs?.length) {
       inputs.forEach((input) => {
@@ -143,8 +141,8 @@ export default <T extends FormPropertyTypes<T>>(formObject: FormObject<T>): Form
     const errors = await Promise.all(promises)
 
     if (setError) {
-      const inputs = Object.values(formObject).filter((x) => (
-        !!(x as typeof formObject[keyof T]).validate)) as (typeof formObject[keyof T])[]
+      const inputs = Object.values(formObject).filter((input) => (
+        !!(input as typeof formObject[keyof T]).validate)) as (typeof formObject[keyof T])[]
 
       errors.forEach((error, index) => {
         const input = inputs[index]
@@ -153,9 +151,12 @@ export default <T extends FormPropertyTypes<T>>(formObject: FormObject<T>): Form
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getFormValues: GetFormValues<T> = (options, useGetter = true as any) => {
-    const { include, exclude } = options || {}
+  const getFormValues: GetFormValues<T> = (options) => {
+    const {
+      include,
+      exclude,
+      useReturnValue,
+    } = options || {}
 
     if (include && exclude) {
       throw new Error('`include` and `exclude` cannot be used together')
@@ -172,7 +173,7 @@ export default <T extends FormPropertyTypes<T>>(formObject: FormObject<T>): Form
 
       if (!include || include.indexOf(key as keyof T) !== -1) {
         if (get) {
-          propertyValues[key] = useGetter ? get(value, formObject) : value
+          propertyValues[key] = useReturnValue ? get(value, formObject) : value
         } else {
           propertyValues[key] = value
         }

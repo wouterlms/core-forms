@@ -21,10 +21,12 @@ interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   formObject: FormObject<any>
   prepare?: boolean
+  allowDirtlessSubmission?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   prepare: false,
+  allowDirtlessSubmission: true,
 })
 
 /* eslint-disable-next-line */
@@ -52,7 +54,7 @@ if (props.prepare) {
 }
 
 const handleSubmit = () => {
-  if (!isDirty.value) {
+  if (!isDirty.value && !props.allowDirtlessSubmission) {
     return
   }
 
@@ -132,6 +134,7 @@ watch(
       :is-dirty="isDirty"
       :is-valid="form.isValid.value"
       :is-submitting="isSubmitting"
+      :submit="handleSubmit"
     />
   </form>
 </template>

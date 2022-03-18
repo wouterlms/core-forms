@@ -46,7 +46,7 @@ const min = (value: number | Date, min: number | Date) => {
     return true
   }
 
-  if (!(value instanceof Date) && !(typeof value === 'number')) {
+  if (!(value instanceof Date) && typeof value !== 'number') {
     throw new RuleError('min', [ 'Number', 'Date' ])
   }
 

@@ -1,9 +1,9 @@
 import {
-  Ref,
+  ComputedRef,
   computed,
   isReactive,
+  nextTick,
   reactive,
-  readonly,
   watch,
 } from 'vue'
 
@@ -85,17 +85,22 @@ export type FormObject<T extends FormPropertyTypes<T>> = {
 }
 
 export type Form<T extends FormPropertyTypes<T>> = {
-  isValid: Readonly<Ref<boolean>>
+  isValid: ComputedRef<boolean>
   formObject: FormObject<T>
   validate: (input?: (keyof T)[], setError?: boolean) => void
   getFormValues: GetFormValues<T>
   setFormValues: SetFormValues<T>
   setFormErrors: SetFormErrors<T>
+  resetToInitialState: () => void
 }
 
-export default <T extends FormPropertyTypes<T>>(formObject: FormObject<T>): Form<T> => {
+export default <
+  T extends FormPropertyTypes<T>
+>(formObject: FormObject<T>, debug = false): Form<T> => {
   const errorMap = reactive(new Map())
   const isValid = computed(() => [ ...errorMap.values() ].every((error) => !error))
+
+  const initialState = JSON.parse(JSON.stringify(formObject))
 
   if (!isReactive(formObject)) {
     throw new Error('form object is not reactive')
@@ -247,23 +252,23 @@ export default <T extends FormPropertyTypes<T>>(formObject: FormObject<T>): Form
       const formProperty = value as typeof formObject[keyof T]
 
       if (formProperty.validate) {
+        const validator = typeof formProperty.validate === 'function' ? formProperty.validate : formProperty.validate.handler
+
         if (typeof formProperty.validate === 'function' || formProperty.validate.options.watch) {
           watch(
-            () => formProperty.value,
+            [ () => formProperty.value, () => validator(formProperty.value, formObject) ],
             async () => {
-              if (formProperty.validate) {
-                errorMap.set(key, true)
+              errorMap.set(key, true)
 
-                const validationResponse = await (
-                  typeof formProperty.validate === 'function'
-                    ? formProperty.validate(formProperty.value, formObject)
-                    : formProperty.validate?.handler(formProperty.value, formObject)
-                )
+              const validationResponse = await (
+                typeof formProperty.validate === 'function'
+                  ? formProperty.validate(formProperty.value, formObject)
+                  : formProperty.validate?.handler(formProperty.value, formObject)
+              )
 
-                errorMap.set(key, validationResponse === false || typeof validationResponse === 'string')
+              errorMap.set(key, validationResponse === false || typeof validationResponse === 'string')
 
-                formProperty.error = validationResponse
-              }
+              formProperty.error = validationResponse
             },
             { deep: true }
           )
@@ -272,15 +277,53 @@ export default <T extends FormPropertyTypes<T>>(formObject: FormObject<T>): Form
     })
   }
 
+  const resetToInitialState = () => {
+    Object.keys(formObject).forEach(async (key) => {
+      formObject[key as keyof T].value = initialState[key].value
+      await nextTick()
+      formObject[key as keyof T].error = null
+    })
+
+    // setInitialErrors()
+  }
+
   setInitialErrors()
   watchForValidation()
 
+  if (debug) {
+    Object.keys(formObject).forEach((key) => {
+      const stringified = computed(() => JSON.stringify(formObject[key as keyof T]))
+
+      watch(stringified, (newDataStringified, oldDataStringified) => {
+        const oldData = JSON.parse(oldDataStringified)
+        const newData = JSON.parse(newDataStringified)
+
+        const logData: Record<string, unknown> = {}
+
+        if (JSON.stringify(oldData.value) !== JSON.stringify(newData.value)) {
+          logData.oldValue = oldData.value
+          logData.newValue = newData.value
+        }
+
+        if (oldData.error !== newData.error) {
+          logData.oldError = oldData.error
+          logData.newError = newData.error
+        }
+
+        console.log(key)
+        console.table(logData)
+        console.log(errorMap)
+      })
+    })
+  }
+
   return {
-    isValid: readonly(isValid),
+    isValid,
     formObject,
     validate,
     getFormValues,
     setFormValues,
     setFormErrors,
+    resetToInitialState,
   }
 }

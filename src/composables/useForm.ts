@@ -88,6 +88,7 @@ export type Form<T extends FormPropertyTypes<T>> = {
   isValid: ComputedRef<boolean>
   formObject: FormObject<T>
   validate: (input?: (keyof T)[], setError?: boolean) => void
+  isValidProperty: (property: keyof T) => boolean
   getFormValues: GetFormValues<T>
   setFormValues: SetFormValues<T>
   setFormErrors: SetFormErrors<T>
@@ -218,6 +219,8 @@ export default <
     })
   }
 
+  const isValidProperty = (property: keyof T) => !errorMap.get(property)
+
   const setInitialErrors = async () => {
     Object.keys(formObject).forEach((k) => {
       errorMap.set(k, false)
@@ -324,6 +327,7 @@ export default <
     getFormValues,
     setFormValues,
     setFormErrors,
+    isValidProperty,
     resetToInitialState,
   }
 }

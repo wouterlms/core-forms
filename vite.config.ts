@@ -1,19 +1,19 @@
+import { resolve } from 'path'
 import { defineConfig } from 'vite'
 
 import vue from '@vitejs/plugin-vue'
-import { resolve } from 'path'
 
 import pkg from './package.json'
 
 export default defineConfig({
-  plugins: [ vue() ],
+  plugins: [vue()],
   resolve: {
     alias: [
       {
         find: '@',
-        replacement: resolve(__dirname, 'src'),
+        replacement: resolve(__dirname, 'src')
       }
-    ],
+    ]
   },
   build: {
     target: 'esnext',
@@ -21,16 +21,17 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       name: 'index',
-      formats: [ 'es' ],
+      formats: ['es']
     },
     rollupOptions: {
-      external: Object.keys(pkg.dependencies),
+      external: [...Object.keys(pkg.dependencies), 'vue', 'vue-i18n'],
       output: {
         globals: {
           vue: 'Vue',
+          'vue-i18n': 'vue-i18n'
         },
-        entryFileNames: () => '[name].js',
-      },
-    },
-  },
+        entryFileNames: () => '[name].js'
+      }
+    }
+  }
 })

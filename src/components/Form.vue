@@ -5,10 +5,7 @@ import {
   watch,
 } from 'vue'
 
-import {
-  useEventListener,
-  useObjectHelper,
-} from '@wouterlms/composables'
+import { useEventListener } from '@wouterlms/composables'
 
 import {
   Form,
@@ -21,12 +18,12 @@ interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   formObject: FormObject<any>
   prepare?: boolean
-  allowDirtlessSubmission?: boolean
+  allowCleanSubmit?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   prepare: false,
-  allowDirtlessSubmission: true,
+  allowCleanSubmit: true,
 })
 
 /* eslint-disable-next-line */
@@ -35,17 +32,15 @@ const emit = defineEmits<{
   (event: 'prepare', done: () => void): void
 }>()
 
-const { deepClone } = useObjectHelper()
-
 const isDirty = ref(false)
 const isSubmitting = ref(false)
 const isFormLoaded = ref(false)
-const initialFormState = ref(deepClone(props.formObject))
+const initialFormState = ref(JSON.parse(JSON.stringify(props.formObject)))
 
 if (props.prepare) {
   emit('prepare', () => {
     nextTick().then(() => {
-      initialFormState.value = deepClone(props.formObject)
+      initialFormState.value = JSON.parse(JSON.stringify(props.formObject))
       isFormLoaded.value = true
     })
   })
@@ -54,7 +49,7 @@ if (props.prepare) {
 }
 
 const handleSubmit = () => {
-  if (!isDirty.value && !props.allowDirtlessSubmission) {
+  if (!isDirty.value && !props.allowCleanSubmit) {
     return
   }
 
@@ -69,7 +64,7 @@ const handleSubmit = () => {
     isSubmitting.value = true
 
     emit('submit', () => {
-      initialFormState.value = deepClone(props.formObject)
+      initialFormState.value = JSON.parse(JSON.stringify(props.formObject))
       isDirty.value = false
       isSubmitting.value = false
     })

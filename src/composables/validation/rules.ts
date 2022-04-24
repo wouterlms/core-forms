@@ -1,11 +1,10 @@
 class RuleError extends Error {
-  constructor(rule: string, types: string[]) {
+  constructor (rule: string, types: string[]) {
     super(`${rule} validation only allows values of type ${types.map((type) => `\`${type}\``).join(', ')}`)
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const required = (value: any) => {
+const required = (value: unknown): boolean => {
   if (value === null || value === undefined) {
     return false
   }
@@ -18,6 +17,10 @@ const required = (value: any) => {
     return value
   }
 
+  if (typeof value === 'number') {
+    return true
+  }
+
   if (Array.isArray(value)) {
     return !!value.length
   }
@@ -25,29 +28,29 @@ const required = (value: any) => {
   return !!value
 }
 
-const minLength = (value: string | Array<unknown> | null, minLength: number) => {
+const minLength = (value: string | unknown[] | null, minLength: number): boolean => {
   if (typeof value === 'string') {
     return !value || value.trim().length >= minLength
   }
 
-  return value && value.length >= minLength
+  return !!value && value.length >= minLength
 }
 
-const maxLength = (value: string | Array<unknown> | null, maxLength: number) => {
+const maxLength = (value: string | unknown[] | null, maxLength: number): boolean => {
   if (typeof value === 'string') {
     return !value || value.trim().length <= maxLength
   }
 
-  return value && value.length <= maxLength
+  return !!value && value.length <= maxLength
 }
 
-const min = (value: number | Date, min: number | Date) => {
+const min = (value: number | Date, min: number | Date): boolean => {
   if (value === null) {
     return true
   }
 
   if (!(value instanceof Date) && typeof value !== 'number') {
-    throw new RuleError('min', [ 'Number', 'Date' ])
+    throw new RuleError('min', ['Number', 'Date'])
   }
 
   if (value instanceof Date) {
@@ -57,13 +60,13 @@ const min = (value: number | Date, min: number | Date) => {
   return value >= (min as number)
 }
 
-const max = (value: number | Date | null, max: number | Date) => {
+const max = (value: number | Date | null, max: number | Date): boolean => {
   if (value === null) {
     return true
   }
 
   if (!(value instanceof Date) && !(typeof value === 'number')) {
-    throw new RuleError('max', [ 'Number', 'Date' ])
+    throw new RuleError('max', ['Number', 'Date'])
   }
 
   if (value instanceof Date) {
@@ -73,13 +76,13 @@ const max = (value: number | Date | null, max: number | Date) => {
   return value <= (max as number)
 }
 
-const fileSize = (file: File | null, maxFileSize: number) => {
+const fileSize = (file: File | null, maxFileSize: number): boolean => {
   if (!file) {
     return true
   }
 
   if (!(file instanceof File)) {
-    throw new RuleError('filesize', [ 'File' ])
+    throw new RuleError('filesize', ['File'])
   }
 
   return file.size <= maxFileSize
@@ -87,11 +90,11 @@ const fileSize = (file: File | null, maxFileSize: number) => {
 
 const email = (
   value: string | null
-) => !value || /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(value)
+): boolean => !value || /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(value)
 
 const url = (
   value: string
-) => !value || /^(http(s)?:\/\/)[\w.-]+(?:\.[\w.-]+)+[\w\-._~:/?#[\]@!$&'()*+,;=.]+$/.test(value)
+): boolean => !value || /^(http(s)?:\/\/)[\w.-]+(?:\.[\w.-]+)+[\w\-._~:/?#[\]@!$&'()*+,;=.]+$/.test(value)
 
 export default {
   required,
@@ -101,5 +104,5 @@ export default {
   max,
   fileSize,
   email,
-  url,
+  url
 }

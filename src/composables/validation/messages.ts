@@ -1,32 +1,37 @@
 import {
   useDate,
-  useFileHelper,
+  useFileHelper
 } from '@wouterlms/composables'
 
-import { getI18nInstance } from '@/composables/i18nInstance'
+import { useI18n } from 'vue-i18n'
 
 const { toReadableDate } = useDate()
 const { formatBytes } = useFileHelper()
 
-export default () => {
-  const t = getI18nInstance()
-
-  if (!t) {
-    throw new Error('`i18n instance is not set. Be sure to call `setI18nInstance``')
-  }
+export default (): {
+  required: string
+  url: string
+  email: string
+  minLength: (value: string | unknown[], min: number) => string
+  maxLength: (value: string | unknown[], max: number) => string
+  min: (value: number | Date, min: number) => string
+  max: (value: number | Date, max: number) => string
+  fileSize: (maxFileSize: number) => string
+} => {
+  const { t } = useI18n()
 
   return {
     required: t('core.validation.required'),
     url: t('core.validation.url'),
     email: t('core.validation.email'),
-    minLength: (value: string | Array<unknown>, min: number) => {
+    minLength: (value: string | unknown[], min: number) => {
       if (Array.isArray(value)) {
         return t('core.validation.min', { min })
       }
 
       return t('core.validation.min_length', { min })
     },
-    maxLength: (value: string | Array<unknown>, max: number) => {
+    maxLength: (value: string | unknown[], max: number) => {
       if (Array.isArray(value)) {
         return t('core.validation.max', { max })
       }
@@ -47,6 +52,6 @@ export default () => {
 
       return t('core.validation.max_date', { date: toReadableDate(value) })
     },
-    fileSize: (maxFileSize: number) => t('core.validation.file_size', { maxFileSize: formatBytes(maxFileSize) }),
+    fileSize: (maxFileSize: number) => t('core.validation.file_size', { maxFileSize: formatBytes(maxFileSize) })
   }
 }

@@ -1,26 +1,70 @@
 <script setup lang="ts">
-import { reactive } from 'vue';
-import { useValidation, useForm } from './composables';
+import { reactive, watch } from 'vue';
+import { useFormState } from './composables';
 
-interface UserForm {
-  name: {
+import useForm from './composables/useForm';
+import Form from './components/Form.vue'
+
+interface PostForm {
+  id: {
+    value: string | null
+    returns: string
+  }
+  content: {
     value: string | null
     returns: string
   }
 }
 
-const { applyRules } = useValidation()
-
-const {} = useForm<UserForm>(reactive({
-  name: {
+const formState = useFormState<PostForm>(reactive({
+  id: {
     value: null,
-    validate: (name) => applyRules(name, {
-      required: true
-    })
+  },
+  content: {
+    value: null,
+    // validate: (content) => {
+    //   if (content === null || content.length === 0) {
+    //     return 'Error!'
+    //   }
+
+    //   return null
+    // }
   }
 }))
+
+const handleSubmit = async () => {
+  console.log('submit')
+}
+
+const handlePrepare = async () => {
+  console.log('prepare')
+}
+
+const form = useForm(formState, {
+  handleSubmit
+})
+
+watch(() => form.isDirty, () => {
+  console.log('isDirty')
+})
+
+formState.setData({content: 'testje'})
 </script>
 
 <template>
-  <div></div>
+  <Form :form="form">
+    <div style="whitespace: pre; font-size: 0.6rem;">
+      {{ form }} - {{ formState }}
+    </div>
+
+    <input v-model="formState.formObject.content.value" />
+
+    <div>
+      {{ formState.formObject.content.error }}
+    </div>
+
+    <div>
+      <button type="submit">submit</button>
+    </div>
+  </Form>
 </template>
